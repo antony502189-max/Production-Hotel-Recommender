@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "production-hotel-recommender"
+version = "1.0.0"
+description = "Production-oriented two-stage hotel recommendation system"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "antony502189-max"}]
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "uvicorn[standard]>=0.30,<1.0",
+  "numpy>=1.26,<3.0",
+  "pandas>=2.2,<3.0",
+  "scikit-learn>=1.5,<2.0",
+  "joblib>=1.4,<2.0",
+  "pydantic-settings>=2.5,<3.0",
+  "prometheus-client>=0.20,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<10.0",
+  "httpx>=0.27,<1.0",
+  "ruff>=0.6,<1.0",
+]
+
+[project.scripts]
+hotel-recommender-train = "hotel_recommender.pipeline:cli_train"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["B008"]
