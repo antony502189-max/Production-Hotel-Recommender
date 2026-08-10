@@ -2,7 +2,7 @@
 
 # 🏨 Production Hotel Recommender
 
-### Production-oriented two-stage recommendation system for personalized hotel ranking
+### Production-grade reference architecture for personalized hotel ranking
 
 **Hybrid candidate retrieval → leakage-safe ML ranking → temporal evaluation → FastAPI serving**
 
@@ -12,15 +12,39 @@
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-Ranking-F7931E?logo=scikitlearn&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)
 ![Prometheus](https://img.shields.io/badge/Prometheus-Metrics-E6522C?logo=prometheus&logoColor=white)
+![Reproducible](https://img.shields.io/badge/Benchmark-Reproducible-success)
 ![License](https://img.shields.io/badge/License-MIT-success)
 
-A complete ML system that turns user behavior into ranked hotel recommendations while addressing the
-engineering problems usually skipped in notebooks: **temporal leakage, candidate retrieval, cold start,
-model artifact contracts, reproducible evaluation, API serving, observability and automated testing**.
+A complete recommendation-system portfolio project that turns behavioral history into ranked hotel
+recommendations while explicitly handling the engineering problems usually hidden by notebooks:
+**temporal leakage, candidate retrieval, cold start, artifact compatibility, reproducible evaluation,
+API serving, observability and automated testing**.
 
-[Architecture](#system-architecture) • [Benchmark](#offline-benchmark) • [ML Design](#ml-design) • [API](#api) • [Quick Start](#quick-start)
+**Reference benchmark:** `Recall@10 = 0.1075` vs `0.0805` popularity baseline — **+33.6% relative lift**.
+
+[Case Study](docs/case-study.md) • [Architecture](docs/architecture.md) • [Model Card](docs/model-card.md) • [Benchmark Methodology](docs/benchmark.md) • [API](#api) • [Quick Start](#quick-start)
 
 </div>
+
+---
+
+## Why this repository stands out
+
+This is not a notebook wrapped in an API. The repository is structured around the lifecycle of a real ML service:
+
+| Layer | What is implemented |
+|---|---|
+| **Retrieval** | popularity + city affinity + hotel-type affinity + deterministic cold start |
+| **Ranking** | supervised gradient-boosting ranker over historical user-item features |
+| **Validation** | temporal holdout, explicit history/label separation, ranking metrics |
+| **Baseline** | popularity recommender evaluated on the exact same future holdout |
+| **Artifact** | version, feature schema, training metadata and deterministic fingerprint |
+| **Serving** | FastAPI recommendation endpoint, model metadata and degraded startup |
+| **Observability** | Prometheus request counters, latency histograms and health/readiness |
+| **Deployment** | Docker / Docker Compose, non-root runtime |
+| **Quality** | deterministic data generation, tests and green GitHub Actions CI |
+
+> **Portfolio signal:** the project demonstrates ML, data-science methodology, ML engineering and software engineering in one coherent system.
 
 ---
 
@@ -31,11 +55,11 @@ model artifact contracts, reproducible evaluation, API serving, observability an
 | **Problem** | Rank the most relevant hotels for each user from behavioral history |
 | **Architecture** | Two-stage recommender: hybrid retrieval → gradient-boosting ranker |
 | **Evaluation** | Temporal holdout with Recall@K, NDCG@K, MRR@K and HitRate@K |
-| **Baseline** | Global popularity recommender evaluated on the same holdout |
-| **Serving** | FastAPI REST service with model metadata and degraded startup |
-| **Observability** | Prometheus metrics, health endpoint and structured application logs |
+| **Serving** | FastAPI REST API with artifact metadata and readiness checks |
+| **Observability** | Prometheus metrics + structured application logs |
+| **Reproducibility** | Fixed-seed synthetic data + machine-readable offline metrics |
 | **Deployment** | Docker / Docker Compose |
-| **Quality** | Deterministic synthetic data, unit tests and green GitHub Actions CI |
+| **CI** | Python 3.11 install → compile → pytest on every push/PR to `main` |
 
 ### Reference result
 
@@ -43,6 +67,8 @@ model artifact contracts, reproducible evaluation, API serving, observability an
 
 The benchmark is deterministic and reproducible from the repository. The bundled dataset is synthetic;
 the result demonstrates system design and evaluation discipline rather than real-world travel performance.
+
+For the full portfolio narrative, see [`docs/case-study.md`](docs/case-study.md).
 
 ---
 
@@ -62,27 +88,6 @@ This project models the recommendation workflow as an end-to-end ML system:
 7. **monitor** service health and request telemetry.
 
 The result is intentionally structured as an application rather than a single training notebook.
-
----
-
-## What makes it production-oriented
-
-| Retrieval | Modeling | Evaluation | Serving |
-|---|---|---|---|
-| Popularity candidates | Gradient boosting ranker | Temporal holdout | FastAPI REST API |
-| City affinity | Leakage-safe training pairs | Recall@K | Health/readiness |
-| Hotel-type affinity | User-item features | NDCG@K | Model metadata |
-| Cold-start fallback | Versioned artifact | MRR / HitRate | Prometheus metrics |
-| Bounded candidate pool | Feature-schema validation | Popularity baseline | Docker deployment |
-
-Additional engineering decisions:
-
-- deterministic data generation from a fixed seed;
-- explicit history/label windows during training;
-- reproducible command-line training and evaluation;
-- model fingerprint and training metadata;
-- degraded API startup when the artifact is unavailable;
-- automated package installation, compilation and tests in GitHub Actions.
 
 ---
 
@@ -115,8 +120,10 @@ python scripts/evaluate.py \
   --k 10
 ```
 
-Both recommenders are evaluated against the **same future holdout**. This matters: the model is not
-compared against an unrelated or easier split merely to produce a better-looking number.
+Both recommenders are evaluated against the **same future holdout**. The model is not compared against
+an unrelated or easier split merely to produce a better-looking number.
+
+Full methodology: [`docs/benchmark.md`](docs/benchmark.md)
 
 ---
 
@@ -161,7 +168,7 @@ sequenceDiagram
     API-->>Client: stable top-K ranking
 ```
 
-Detailed design notes and model card: [`docs/architecture.md`](docs/architecture.md)
+Detailed design notes: [`docs/architecture.md`](docs/architecture.md)
 
 ---
 
@@ -194,10 +201,9 @@ from features that are available **before** the target interaction occurs.
 
 ### Leakage prevention
 
-One of the easiest ways to accidentally overstate recommender quality is to build features from the
-same event later used as the label. This repository avoids that failure mode by separating the training
-data into an earlier **feature-history window** and a later **label window** before training examples
-are constructed.
+One of the easiest ways to overstate recommender quality is to build features from the same event later
+used as the label. This repository avoids that failure mode by separating the training data into an
+earlier **feature-history window** and a later **label window** before training examples are constructed.
 
 ### Model artifact contract
 
@@ -218,6 +224,8 @@ The serialized `RecommenderBundle` contains both the estimator and the context r
 The loader validates the feature schema before serving, preventing an incompatible artifact from being
 silently loaded by newer application code.
 
+Standalone model documentation: [`docs/model-card.md`](docs/model-card.md)
+
 ---
 
 ## Repository structure
@@ -228,8 +236,11 @@ Production-Hotel-Recommender/
 │   └── workflows/
 │       └── ci.yml                  # install, compile and test on GitHub Actions
 ├── docs/
-│   ├── architecture.md             # architecture decisions + model card
-│   └── ci-verification.md          # CI contract and validation notes
+│   ├── architecture.md             # architecture and design decisions
+│   ├── benchmark.md                # evaluation methodology and interpretation
+│   ├── case-study.md               # portfolio / recruiter-oriented project narrative
+│   ├── ci-verification.md          # CI contract and validation notes
+│   └── model-card.md               # intended use, metrics, limitations and monitoring
 ├── scripts/
 │   ├── train.py                    # reproducible training CLI
 │   └── evaluate.py                 # temporal offline benchmark
@@ -240,11 +251,11 @@ Production-Hotel-Recommender/
 │   ├── data.py                     # validation + vectorized data generator
 │   ├── domain.py                   # domain and artifact contracts
 │   ├── features.py                 # feature engineering
-│   ├── metrics.py                  # ranking metrics
+│   ├── metrics.py                  # Recall/NDCG/MRR/HitRate
 │   ├── model.py                    # ranker construction and scoring
 │   ├── pipeline.py                 # leakage-safe training pipeline
 │   ├── service.py                  # online recommendation service
-│   └── storage.py                  # artifact loading and validation
+│   └── storage.py                  # artifact loading and schema validation
 ├── tests/
 │   ├── test_data.py
 │   ├── test_metrics.py
@@ -405,6 +416,9 @@ Prometheus endpoint:
 http://localhost:8000/metrics
 ```
 
+A real production deployment should additionally monitor candidate coverage, recommendation diversity,
+feature drift, training-serving skew and online business metrics.
+
 ---
 
 ## Engineering decisions
@@ -427,11 +441,11 @@ http://localhost:8000/metrics
 
 A real travel platform would extend this reference implementation with:
 
-- collaborative filtering or ANN-based candidate retrieval;
+- collaborative filtering or embedding / ANN candidate retrieval;
 - session/search context, dates, destination and guest constraints;
 - point-in-time-correct online/offline feature store;
 - MLflow or another model registry;
-- Redis or dedicated online feature cache;
+- Redis or a dedicated online feature cache;
 - scheduled retraining with Airflow / Prefect;
 - data-quality and feature-drift monitoring;
 - diversity, novelty and business-rule re-ranking;
@@ -441,6 +455,18 @@ A real travel platform would extend this reference implementation with:
 
 The repository intentionally keeps those as extensions rather than pretending a synthetic demo is a
 fully deployed commercial travel platform.
+
+---
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [`Case Study`](docs/case-study.md) | compact portfolio narrative: problem → architecture → results → trade-offs |
+| [`Architecture`](docs/architecture.md) | detailed system design and implementation decisions |
+| [`Model Card`](docs/model-card.md) | model inputs, intended use, metrics, limitations and monitoring |
+| [`Benchmark`](docs/benchmark.md) | evaluation split, metrics, baseline and reproducibility methodology |
+| [`CI Verification`](docs/ci-verification.md) | automated validation contract |
 
 ---
 
